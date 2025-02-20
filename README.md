@@ -13,5 +13,6 @@ A Streamlit app for cleaning, analyzing, and converting CSV/Excel files.
 pip install streamlit pandas openpyxl
 
 
-##▶️ Run the App (cmd)
+## ▶️ Run the App (cmd)
+
 streamlit run app.py
