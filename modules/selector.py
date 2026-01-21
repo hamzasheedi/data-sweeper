@@ -2,6 +2,18 @@ import streamlit as st
 import pandas as pd
 
 
+def select_all_callback(filename, all_columns):
+    """Callback function to select all columns"""
+    session_key = f"selected_cols_{filename}"
+    st.session_state[session_key] = all_columns
+
+
+def deselect_all_callback(filename):
+    """Callback function to deselect all columns"""
+    session_key = f"selected_cols_{filename}"
+    st.session_state[session_key] = []
+
+
 def select_columns(dataframes):
     """
     Handle column selection for the Data Sweeper application.
@@ -18,27 +30,39 @@ def select_columns(dataframes):
         with st.expander(f"📌 Select columns for: {filename}", expanded=True):
             # Multiselect for column selection
             all_columns = df.columns.tolist()
-            default_selection = all_columns  # By default, select all columns
+
+            # Initialize session state for this file's selected columns if not already set
+            session_key = f"selected_cols_{filename}"
+            if session_key not in st.session_state:
+                st.session_state[session_key] = all_columns  # By default, select all columns
 
             # Create columns for better layout
             col1, col2 = st.columns([3, 1])
+
+            with col2:
+                # Add select all/deselect all buttons with callbacks
+                st.button(
+                    f"✅ Select All",
+                    key=f"select_all_{filename}",
+                    on_click=select_all_callback,
+                    args=(filename, all_columns)
+                )
+                st.button(
+                    f"❌ Deselect All",
+                    key=f"deselect_all_{filename}",
+                    on_click=deselect_all_callback,
+                    args=(filename,)
+                )
 
             with col1:
                 selected = st.multiselect(
                     f"Columns in {filename}:",
                     options=all_columns,
-                    default=default_selection,
-                    key=f"col_select_{filename}"
+                    default=st.session_state[session_key],
+                    key=session_key
                 )
-
-            with col2:
-                # Add select all/deselect all buttons
-                if st.button(f"✅ Select All", key=f"select_all_{filename}"):
-                    selected = all_columns
-                    st.rerun()
-                if st.button(f"❌ Deselect All", key=f"deselect_all_{filename}"):
-                    selected = []
-                    st.rerun()
+                # Update session state with current selection
+                st.session_state[session_key] = selected
 
             if selected:
                 st.success(f"✅ Selected {len(selected)} out of {len(all_columns)} columns for {filename}")

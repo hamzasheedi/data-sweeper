@@ -44,6 +44,7 @@ def main():
     }
     .file-card {
         background-color: #f8f9fa;
+        color: #333333;
         border-radius: 8px;
         padding: 1rem;
         margin: 0.5rem 0;
@@ -51,6 +52,7 @@ def main():
     }
     .metric-container {
         background-color: #f0f8ff;
+        color: #333333;
         border-radius: 8px;
         padding: 1rem;
         text-align: center;
@@ -117,8 +119,8 @@ def main():
                         st.markdown(f"""
                         <div class="file-card">
                             <strong>📄 {file.name}</strong><br>
-                            Size: {file.size} bytes<br>
-                            Shape: {df.shape[0]} rows × {df.shape[1]} columns
+                            Size: {file.size:,} bytes<br>
+                            Shape: {df.shape[0]:,} rows × {df.shape[1]:,} columns
                         </div>
                         """, unsafe_allow_html=True)
 
