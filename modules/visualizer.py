@@ -40,7 +40,7 @@ def visualize_data(dataframes, selected_columns):
 
                 if col_to_plot:
                     fig = px.histogram(df_subset, x=col_to_plot, title=f"Histogram of {col_to_plot}")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
 
             elif viz_type == "Box Plot":
                 col_to_plot = st.selectbox(
@@ -51,7 +51,7 @@ def visualize_data(dataframes, selected_columns):
 
                 if col_to_plot:
                     fig = px.box(df_subset, y=col_to_plot, title=f"Box Plot of {col_to_plot}")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
 
             elif viz_type == "Scatter Plot":
                 if len(numeric_cols) >= 2:
@@ -74,7 +74,7 @@ def visualize_data(dataframes, selected_columns):
 
                     if col_x and col_y:
                         fig = px.scatter(df_subset, x=col_x, y=col_y, title=f"Scatter Plot: {col_x} vs {col_y}")
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
                 else:
                     st.warning(f"⚠️ Not enough numeric columns for scatter plot in {filename}. Need at least 2.")
 
@@ -88,8 +88,13 @@ def visualize_data(dataframes, selected_columns):
                 if col_to_plot:
                     # Create an index for the line chart if there's no datetime column
                     fig = px.line(df_subset, y=col_to_plot, title=f"Line Chart of {col_to_plot}")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
 
             # Show basic statistics in an expander
             with st.expander("📊 Show statistics"):
-                st.dataframe(df_subset.describe())
+                # Convert problematic columns to avoid Arrow conversion issues
+                desc_df = df_subset.describe().copy()
+                for col in desc_df.columns:
+                    if desc_df[col].dtype == 'object':
+                        desc_df[col] = desc_df[col].apply(lambda x: str(x) if pd.notna(x) else x)
+                st.dataframe(desc_df)

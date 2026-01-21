@@ -135,7 +135,13 @@ def main():
 
                 with tab1:
                     st.write(f"**Shape:** {df.shape}")
-                    st.dataframe(df.head(10))
+                    # Convert problematic columns to string to avoid Arrow conversion issues
+                    df_display = df.head(10).copy()
+                    for col in df_display.columns:
+                        if df_display[col].dtype == 'object':
+                            # Try to convert to string, handling any problematic values
+                            df_display[col] = df_display[col].apply(lambda x: str(x) if pd.notna(x) else x)
+                    st.dataframe(df_display)
 
                 with tab2:
                     st.write("**Basic Statistics:**")

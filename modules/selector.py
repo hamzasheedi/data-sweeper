@@ -61,8 +61,6 @@ def select_columns(dataframes):
                     default=st.session_state[session_key],
                     key=session_key
                 )
-                # Update session state with current selection
-                st.session_state[session_key] = selected
 
             if selected:
                 st.success(f"✅ Selected {len(selected)} out of {len(all_columns)} columns for {filename}")
