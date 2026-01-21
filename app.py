@@ -1,102 +1,87 @@
 import streamlit as st
 import pandas as pd
-import os
-from io import BytesIO
+from modules.uploader import upload_files
+from modules.cleaner import clean_data
+from modules.selector import select_columns
+from modules.visualizer import visualize_data
+from modules.converter import convert_and_download
 
-# Configure 
-st.set_page_config(page_title="Data Sweeper", layout='wide')
 
-# Title / Description
-st.title("🧹 Data Sweeper")
-st.markdown("### Easily clean, analyze, and convert your CSV and Excel files.")
+def main():
+    """
+    Main function to run the Data Sweeper Streamlit application.
+    Orchestrates the workflow: Upload -> Preview -> Clean -> Select -> Visualize -> Convert/Download
+    """
+    st.set_page_config(
+        page_title="Data Sweeper",
+        page_icon="🧹",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
 
-# File Uploader
-uploaded_files = st.file_uploader(
-    "📂 Upload your files (CSV or Excel)",
-    type=["csv", "xlsx"],
-    accept_multiple_files=True
-)
+    st.title("🧹 Data Sweeper")
+    st.subheader("Clean, Process, and Transform Your Data Effortlessly")
 
-# Process Uploaded Files
-if uploaded_files:
-    for file in uploaded_files:
-        file_ext = os.path.splitext(file.name)[-1].lower()
+    # Initialize session state variables
+    if 'uploaded_files' not in st.session_state:
+        st.session_state.uploaded_files = None
+    if 'dataframes' not in st.session_state:
+        st.session_state.dataframes = {}
+    if 'cleaned_dataframes' not in st.session_state:
+        st.session_state.cleaned_dataframes = {}
+    if 'selected_columns' not in st.session_state:
+        st.session_state.selected_columns = {}
 
-        # Read file extension
-        if file_ext == ".csv":
-            df = pd.read_csv(file)
-        elif file_ext == ".xlsx":
-            df = pd.read_excel(file)
-        else:
-            st.error(f"❌ Unsupported file type: {file_ext}")
-            continue
+    # Step 1: Upload Files
+    st.header("📁 Upload Files")
+    uploaded_files = upload_files()
 
-        # File Info
-        st.success(f"✅ **Uploaded:** {file.name} ({file.size} bytes)")
-        st.write("🔍 **Preview of Data**")
-        st.dataframe(df.head())
+    if uploaded_files:
+        st.session_state.uploaded_files = uploaded_files
 
-        # Cleaning Options
-        st.subheader("🧹 Data Cleaning")
-        if st.checkbox(f"Clean Data for **{file.name}**"):
-            col1, col2 = st.columns(2)
+        # Process each uploaded file
+        for file in uploaded_files:
+            if file.name not in st.session_state.dataframes:
+                # Load the dataframe
+                try:
+                    if file.name.endswith('.csv'):
+                        df = pd.read_csv(file)
+                    elif file.name.endswith(('.xlsx', '.xls')):
+                        df = pd.read_excel(file)
+                    else:
+                        st.error(f"Unsupported file type: {file.name}")
+                        continue
 
-            with col1:
-                if st.checkbox("🚮 Remove Duplicates"):
-                    df.drop_duplicates(inplace=True)
-                    st.write("✅ **Duplicates Removed!**")
+                    st.session_state.dataframes[file.name] = df
+                    st.session_state.cleaned_dataframes[file.name] = df.copy()
+                except Exception as e:
+                    st.error(f"Error loading file {file.name}: {str(e)}")
 
-            with col2:
-                if st.checkbox("🛠️ Fill Missing Values"):
-                    numeric_cols = df.select_dtypes(include=['number']).columns
-                    df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
-                    st.write("✅ **Missing values filled with column mean!**")
+        # Show previews of uploaded data
+        st.header("📊 Data Preview")
+        for filename, df in st.session_state.dataframes.items():
+            with st.expander(f"Preview: {filename}"):
+                st.write(f"Shape: {df.shape}")
+                st.dataframe(df.head())
 
-        # Select Columns for Conversion
-        st.subheader("📌 Select Columns")
-        columns = st.multiselect(
-            f"Choose columns for **{file.name}**", 
-            df.columns, 
-            default=df.columns
-        )
-        df = df[columns]
+        # Step 2: Clean Data
+        st.header("🧽 Clean Data")
+        cleaned_dataframes = clean_data(st.session_state.cleaned_dataframes)
+        st.session_state.cleaned_dataframes = cleaned_dataframes
 
-        # Visualization
-        st.subheader("📊 Quick Visualization")
-        if st.checkbox(f"📉 Show Chart for **{file.name}**"):
-            st.bar_chart(df.select_dtypes(include=['number']).iloc[:, :2])
+        # Step 3: Select Columns
+        st.header("🔍 Select Columns")
+        selected_columns = select_columns(st.session_state.cleaned_dataframes)
+        st.session_state.selected_columns = selected_columns
 
-        # File Conversion
-        st.subheader("📂 Convert File Format")
-        conversion_type = st.radio(
-            f"Choose format for **{file.name}**",
-            ["CSV", "Excel"],
-            key=file.name
-        )
+        # Step 4: Visualize Data
+        st.header("📈 Visualize Data")
+        visualize_data(st.session_state.cleaned_dataframes, selected_columns)
 
-        # Conversion
-        if st.button(f"🔄 Convert {file.name}"):
-            buffer = BytesIO()
+        # Step 5: Convert and Download
+        st.header("💾 Convert & Download")
+        convert_and_download(st.session_state.cleaned_dataframes, selected_columns)
 
-            if conversion_type == "CSV":
-                df.to_csv(buffer, index=False)
-                buffer.seek(0)
-                file_name = os.path.splitext(file.name)[0] + ".csv"
-                mime_type = "text/csv"
 
-            elif conversion_type == "Excel":
-                with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-                    df.to_excel(writer, index=False)
-                buffer.seek(0)
-                file_name = os.path.splitext(file.name)[0] + ".xlsx"
-                mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-            # Download Button
-            st.download_button(
-                label=f"📥 Download Converted {file.name} as {conversion_type}",
-                data=buffer.getvalue(),
-                file_name=file_name,
-                mime=mime_type
-            )
-
-st.success(f"🎉 **Thank you for using Data Sweeper!**")
+if __name__ == "__main__":
+    main()
